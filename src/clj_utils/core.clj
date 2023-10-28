@@ -3,6 +3,8 @@
   (:import (java.lang.reflect Modifier))
   (:use clojure.set))
 
+(defonce ^{:dynamic true} *show-noisy-output* false)
+
 (defmacro defs-base
   [f & parts]
   (let [grouped (partition 2 parts)]
@@ -42,11 +44,16 @@
                (rest pairs))
         cur))))
 
+(defn checked-println
+  [& args]
+  (when *show-noisy-output*
+    (apply println args)))
+
 (defmacro noisy-let
   [[& bindings] & forms]
   (let [new-bindings (for [b (partition 2 bindings)]
                        `((~(first b) ~(second b))
-                         (nop# (println '~(first b) ~(first b)))))
+                         (nop# (checked-println '~(first b) ~(first b)))))
         unpaired (vec-unpair new-bindings)
         extra-unpaired (vec-unpair unpaired)]
     `(let ~extra-unpaired
@@ -54,8 +61,12 @@
 
 (defn noisy-clamp
   [n mn mx]
-  (let [mn-clp (if (< n mn) (do (println "Num less than " mn "!!") mn) n)
-        mx-clp (if (> n mx) (do (println "Num greater than " mx "!!") mx) n)]
+  (let [mn-clp (if (< n mn)
+                 (do (checked-println "Num less than " mn "!!") mn)
+                 n)
+        mx-clp (if (> n mx)
+                 (do (checked-println "Num greater than " mx "!!") mx)
+                 n)]
     mx-clp))
 
 (defmacro import-static

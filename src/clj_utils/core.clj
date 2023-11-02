@@ -1,7 +1,6 @@
 (ns clj-utils.core
   (:gen-class)
-  (:import (java.lang.reflect Modifier))
-  (:use clojure.set))
+  (:require [clojure.set :refer [intersection]]))
 
 (defonce ^{:dynamic true} *show-noisy-output* false)
 
@@ -33,17 +32,6 @@
     in
     (cons in nil)))
 
-(defn- vec-unpair
-  [pairs]
-  (loop [cur (vector) ;; vector, so that conj puts things at the back
-         pairs pairs]
-    (let [cur-pair (first pairs)
-          f (conj cur (first cur-pair))]
-      (if cur-pair
-        (recur (conj f (second cur-pair))
-               (rest pairs))
-        cur))))
-
 (defn checked-println
   [& args]
   (when *show-noisy-output*
@@ -52,11 +40,12 @@
 (defmacro noisy-let
   [[& bindings] & forms]
   (let [new-bindings (for [b (partition 2 bindings)]
-                       `((~(first b) ~(second b))
-                         (nop# (checked-println '~(first b) ~(first b)))))
-        unpaired (vec-unpair new-bindings)
-        extra-unpaired (vec-unpair unpaired)]
-    `(let ~extra-unpaired
+                       [(first b) (second b)
+                        `nop# (list checked-println
+                                    (cons 'quote (list (first b)))
+                                    (first b))])
+        concat-bindings (apply concat new-bindings)]
+    `(let [~@concat-bindings]
        ~@forms)))
 
 (defn noisy-clamp
